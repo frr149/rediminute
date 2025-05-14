@@ -3,10 +3,9 @@
 RedIMinute Server - Asynchronous TCP Server
 """
 import asyncio
-import json
 import logging
 import signal
-from typing import Dict, Optional, Set, Tuple
+from typing import Dict, Set
 
 # Configure logging
 logging.basicConfig(
@@ -18,7 +17,7 @@ logger = logging.getLogger("rediminute.server")
 
 class RedIMinuteServer:
     """
-    Asynchronous TCP server that accepts JSON messages and processes commands.
+    Asynchronous TCP server that accepts connections and echoes messages back.
     """
     def __init__(self, host: str = "127.0.0.1", port: int = 6379, 
                  idle_timeout: int = 300):
@@ -63,8 +62,8 @@ class RedIMinuteServer:
         logger.info("Shutting down server...")
         self.running = False
         
-        # Close all client connections
-        for writer in self.clients:
+        # Close all client connections (use a copy to avoid iteration errors)
+        for writer in list(self.clients):
             if not writer.is_closing():
                 writer.close()
                 await writer.wait_closed()
@@ -102,8 +101,9 @@ class RedIMinuteServer:
                     if not data:  # Connection closed by client
                         break
                         
-                    # Process the message
-                    response = await self._process_message(data.decode().strip())
+                    # Process the message (currently just echo)
+                    message = data.decode().strip()
+                    response = message
                     
                     # Send response
                     writer.write(f"{response}\n".encode())
@@ -125,22 +125,6 @@ class RedIMinuteServer:
                 await writer.wait_closed()
                 
             logger.info(f"Connection from {addr} closed")
-    
-    async def _process_message(self, message: str) -> str:
-        """
-        Process incoming messages.
-        
-        Currently just echoes back the message.
-        Will be extended in later stages.
-        
-        Args:
-            message: The message received from the client
-            
-        Returns:
-            The response to send back to the client
-        """
-        # For now, just echo the message back (Stage 1)
-        return message
 
 
 async def main():
