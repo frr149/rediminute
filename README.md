@@ -41,7 +41,7 @@ pip install -r requirements.txt
 ## Running the Server
 
 ```bash
-python -m rediminute
+python -m rediminute.server
 ```
 
 ## License
