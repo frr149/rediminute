@@ -30,12 +30,12 @@ The project is being developed in stages:
 git clone https://github.com/yourusername/rediminute.git
 cd rediminute
 
-# Create a virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
+# Create a virtual environment with uv
+uv venv
+source .venv/bin/activate  # On fish shell: source .venv/bin/activate.fish
 
-# Install dependencies
-pip install -r requirements.txt
+# Install the project in development mode
+uv pip install -e .
 ```
 
 ## Running the Server

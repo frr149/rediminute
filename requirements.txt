@@ -1,4 +1,0 @@
-asyncio>=3.4.3
-uvloop>=0.16.0
-orjson>=3.8.0
-logging>=0.4.9 
