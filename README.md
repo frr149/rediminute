@@ -1,10 +1,10 @@
-# RedIMinute
+# rediminute
 
 A Redis-inspired asynchronous TCP server implemented in Python with asyncio.
 
 ## Overview
 
-RedIMinute is an in-memory key-value store that communicates over TCP. It's designed to be lightweight, fast, and support multiple simultaneous connections.
+rediminute is an in-memory key-value store that communicates over TCP. It's designed to be lightweight, fast, and support multiple simultaneous connections.
 
 ## Features (Planned)
 

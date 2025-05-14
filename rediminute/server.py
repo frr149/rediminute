@@ -1,3 +1,3 @@
 """
-RedIMinute Server
+rediminute Server
 """
