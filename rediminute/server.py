@@ -11,6 +11,11 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, Optional
 
+# Default server configuration
+DEFAULT_HOST = "0.0.0.0"  # Listen on all interfaces
+DEFAULT_PORT = 8379       # Default server port
+DEFAULT_TIMEOUT = 300     # Default idle timeout in seconds
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -53,7 +58,8 @@ class RediminuteServer:
         OSError: If the server cannot bind to the specified host and port
     """
     
-    def __init__(self, host: str = "127.0.0.1", port: int = 6379, idle_timeout: int = 300) -> None:
+    def __init__(self, host: str = DEFAULT_HOST, port: int = DEFAULT_PORT, 
+                 idle_timeout: int = DEFAULT_TIMEOUT) -> None:
         """
         Initialize the server with configuration parameters.
         

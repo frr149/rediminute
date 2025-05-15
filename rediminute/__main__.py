@@ -9,7 +9,13 @@ import asyncio
 import logging
 import sys
 
-from rediminute.server import RediminuteServer, logger
+from rediminute.server import (
+    RediminuteServer,
+    DEFAULT_HOST,
+    DEFAULT_PORT,
+    DEFAULT_TIMEOUT,
+    logger
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -20,10 +26,28 @@ def parse_args() -> argparse.Namespace:
         Parsed command line arguments
     """
     parser = argparse.ArgumentParser(description="rediminute Server")
-    parser.add_argument("--host", default="127.0.0.1", help="Host to bind to")
-    parser.add_argument("--port", type=int, default=6379, help="Port to listen on")
-    parser.add_argument("--timeout", type=int, default=300, help="Idle timeout in seconds")
-    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+    parser.add_argument(
+        "--host",
+        default=DEFAULT_HOST,
+        help=f"Host to bind to (default: {DEFAULT_HOST})"
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=DEFAULT_PORT,
+        help=f"Port to listen on (default: {DEFAULT_PORT})"
+    )
+    parser.add_argument(
+        "--timeout",
+        type=int,
+        default=DEFAULT_TIMEOUT,
+        help=f"Idle timeout in seconds (default: {DEFAULT_TIMEOUT})"
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Enable debug logging"
+    )
     
     return parser.parse_args()
 
