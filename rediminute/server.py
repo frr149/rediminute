@@ -41,7 +41,7 @@ class ClientConnection:
     state: ConnectionState = ConnectionState.CONNECTED
 
 
-class AsyncServer:
+class RediminuteServer:
     """
     Asynchronous TCP echo server with graceful shutdown and error handling.
     
@@ -244,7 +244,7 @@ def main() -> None:
         logging.getLogger("rediminute").setLevel(logging.DEBUG)
     
     # Create and run server
-    server = AsyncServer(host=args.host, port=args.port, idle_timeout=args.timeout)
+    server = RediminuteServer(host=args.host, port=args.port, idle_timeout=args.timeout)
     
     try:
         asyncio.run(server.start())
