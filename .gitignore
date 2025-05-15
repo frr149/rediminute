@@ -41,5 +41,9 @@ ENV/
 ehthumbs.db
 Thumbs.db
 
+# Type checking cache
+.mypy_cache/
+.pyright/
+
 # Project specific
 *.log 

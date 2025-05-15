@@ -10,18 +10,18 @@ import logging
 import sys
 
 from rediminute.server import (
-    RediminuteServer,
     DEFAULT_HOST,
     DEFAULT_PORT,
     DEFAULT_TIMEOUT,
-    logger
+    RediminuteServer,
+    logger,
 )
 
 
 def parse_args() -> argparse.Namespace:
     """
     Parse command line arguments.
-    
+
     Returns:
         Parsed command line arguments
     """
@@ -48,24 +48,24 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Enable debug logging"
     )
-    
+
     return parser.parse_args()
 
 
 async def run_server(args: argparse.Namespace) -> None:
     """
     Create and run the server with the given arguments.
-    
+
     Args:
         args: Command line arguments
     """
     # Set log level
     if args.debug:
         logging.getLogger("rediminute").setLevel(logging.DEBUG)
-    
+
     # Create and run server
     server = RediminuteServer(host=args.host, port=args.port, idle_timeout=args.timeout)
-    
+
     try:
         await server.start()
     except KeyboardInterrupt:
@@ -78,11 +78,11 @@ async def run_server(args: argparse.Namespace) -> None:
 def main() -> None:
     """
     Parse arguments and run the server.
-    
+
     This is the main entry point for the command line interface.
     """
     args = parse_args()
-    
+
     try:
         asyncio.run(run_server(args))
     except KeyboardInterrupt:
@@ -91,4 +91,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main() 
+    main()
