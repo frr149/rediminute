@@ -4,11 +4,9 @@ rediminute Server - Asynchronous TCP Echo Server
 A lightweight, asynchronous TCP server that accepts connections
 and echoes back messages to clients.
 """
-import argparse
 import asyncio
 import logging
 import signal
-import sys
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Dict, Optional
@@ -212,46 +210,3 @@ class RediminuteServer:
             except Exception as e:
                 logger.error(f"Error handling client {addr}: {e}")
                 break
-
-
-def parse_args() -> argparse.Namespace:
-    """
-    Parse command line arguments.
-    
-    Returns:
-        Parsed command line arguments
-    """
-    parser = argparse.ArgumentParser(description="rediminute Server")
-    parser.add_argument("--host", default="127.0.0.1", help="Host to bind to")
-    parser.add_argument("--port", type=int, default=6379, help="Port to listen on")
-    parser.add_argument("--timeout", type=int, default=300, help="Idle timeout in seconds")
-    parser.add_argument("--debug", action="store_true", help="Enable debug logging")
-    
-    return parser.parse_args()
-
-
-def main() -> None:
-    """
-    Run the server with command line arguments.
-    
-    This function parses command line arguments, configures logging,
-    and starts the server.
-    """
-    args = parse_args()
-    
-    # Set log level
-    if args.debug:
-        logging.getLogger("rediminute").setLevel(logging.DEBUG)
-    
-    # Create and run server
-    server = RediminuteServer(host=args.host, port=args.port, idle_timeout=args.timeout)
-    
-    try:
-        asyncio.run(server.start())
-    except KeyboardInterrupt:
-        print("\nShutting down...")
-        sys.exit(0)
-
-
-if __name__ == "__main__":
-    main()
