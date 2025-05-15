@@ -11,7 +11,7 @@ import signal
 import sys
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, Optional, Set
+from typing import Dict, Optional
 
 # Configure logging
 logging.basicConfig(
@@ -29,7 +29,12 @@ class ConnectionState(Enum):
 
 @dataclass
 class ClientConnection:
-    """Immutable client connection information."""
+    """
+    Client connection information.
+    
+    Note: This is intentionally not frozen to allow state updates,
+    but we treat it as immutable for most operations.
+    """
     writer: asyncio.StreamWriter
     address: tuple
     connected_at: float = field(default_factory=lambda: asyncio.get_event_loop().time())
@@ -92,8 +97,11 @@ class AsyncServer:
         logger.info(f"Server started on {self.host}:{self.port}")
         
         # Start serving
-        async with self.server:
-            await self.server.serve_forever()
+        if self.server:  # Type check to satisfy linter
+            async with self.server:
+                await self.server.serve_forever()
+        else:
+            raise RuntimeError("Server failed to initialize")
     
     async def stop(self) -> None:
         """
@@ -138,15 +146,11 @@ class AsyncServer:
             # Just log the error, we're trying to clean up anyway
             logger.error(f"Error closing client connection: {e}")
         finally:
-            # Update client state
+            # Update client state if it exists
             if writer in self.clients:
                 client = self.clients[writer]
-                self.clients[writer] = ClientConnection(
-                    writer=client.writer,
-                    address=client.address,
-                    connected_at=client.connected_at,
-                    state=ConnectionState.DISCONNECTED
-                )
+                # Update the state directly, as ClientConnection is mutable
+                client.state = ConnectionState.DISCONNECTED
     
     async def _handle_client(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         """
