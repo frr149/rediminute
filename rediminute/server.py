@@ -7,14 +7,16 @@ and echoes back messages to clients.
 import asyncio
 import logging
 import signal
+import time
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Set
 
 # Default server configuration
 DEFAULT_HOST = "0.0.0.0"  # Listen on all interfaces
 DEFAULT_PORT = 8379       # Default server port
 DEFAULT_TIMEOUT = 300     # Default idle timeout in seconds
+CLEANUP_INTERVAL = 60     # Interval for checking stale connections
 
 # Configure logging
 logging.basicConfig(
@@ -40,8 +42,18 @@ class ClientConnection:
     """
     writer: asyncio.StreamWriter
     address: tuple
-    connected_at: float = field(default_factory=lambda: asyncio.get_event_loop().time())
+    connected_at: float = field(default_factory=lambda: time.time())
+    last_active_at: float = field(default_factory=lambda: time.time())
     state: ConnectionState = ConnectionState.CONNECTED
+    
+    def update_activity(self) -> None:
+        """Update the last activity timestamp."""
+        self.last_active_at = time.time()
+    
+    @property
+    def idle_time(self) -> float:
+        """Get the time in seconds since the last activity."""
+        return time.time() - self.last_active_at
 
 
 class RediminuteServer:
@@ -74,6 +86,7 @@ class RediminuteServer:
         self.server: Optional[asyncio.Server] = None
         self.clients: Dict[asyncio.StreamWriter, ClientConnection] = {}
         self.is_running = False
+        self.cleanup_task: Optional[asyncio.Task] = None
     
     async def start(self) -> None:
         """
@@ -98,6 +111,9 @@ class RediminuteServer:
         for sig in (signal.SIGINT, signal.SIGTERM):
             loop.add_signal_handler(sig, lambda: asyncio.create_task(self.stop()))
         
+        # Start periodic cleanup task
+        self.cleanup_task = asyncio.create_task(self._periodic_cleanup())
+        
         logger.info(f"Server started on {self.host}:{self.port}")
         
         # Start serving
@@ -119,6 +135,14 @@ class RediminuteServer:
         logger.info("Shutting down server...")
         self.is_running = False
         
+        # Cancel cleanup task
+        if self.cleanup_task:
+            self.cleanup_task.cancel()
+            try:
+                await self.cleanup_task
+            except asyncio.CancelledError:
+                pass
+        
         # Close all client connections
         close_tasks = []
         for client in list(self.clients.values()):
@@ -128,12 +152,54 @@ class RediminuteServer:
         if close_tasks:
             await asyncio.gather(*close_tasks, return_exceptions=True)
         
+        # Clear the clients dictionary to prevent memory leaks
+        self.clients.clear()
+        
         # Close the server
         if self.server:
             self.server.close()
             await self.server.wait_closed()
         
         logger.info("Server shutdown complete")
+    
+    async def _periodic_cleanup(self) -> None:
+        """
+        Periodically check for and clean up stale connections.
+        
+        This runs as a background task to ensure dead connections
+        don't remain in the clients dictionary.
+        """
+        while self.is_running:
+            try:
+                # Wait for the next cleanup interval
+                await asyncio.sleep(CLEANUP_INTERVAL)
+                
+                # Check for stale connections
+                stale_writers = []
+                now = time.time()
+                
+                for writer, client in list(self.clients.items()):
+                    # Check if connection is stale
+                    if (client.state == ConnectionState.DISCONNECTED or
+                            client.idle_time > self.idle_timeout or
+                            writer.is_closing()):
+                        stale_writers.append(writer)
+                
+                # Clean up stale connections
+                for writer in stale_writers:
+                    if writer in self.clients:
+                        logger.info(f"Cleaning up stale connection from {self.clients[writer].address}")
+                        await self._close_client_connection(writer)
+                        del self.clients[writer]
+                
+                logger.debug(f"Cleanup complete: removed {len(stale_writers)} stale connections, {len(self.clients)} active")
+                
+            except asyncio.CancelledError:
+                # Task was cancelled, exit cleanly
+                break
+            except Exception as e:
+                # Log any errors but keep the cleanup task running
+                logger.error(f"Error in periodic cleanup: {e}")
     
     async def _close_client_connection(self, writer: asyncio.StreamWriter) -> None:
         """
@@ -173,12 +239,20 @@ class RediminuteServer:
         
         try:
             await self._process_client_messages(reader, writer)
+        except Exception as e:
+            logger.error(f"Unexpected error handling client {addr}: {e}")
         finally:
             # Clean up the connection
-            await self._close_client_connection(writer)
-            if writer in self.clients:
-                del self.clients[writer]
-            logger.info(f"Connection from {addr} closed")
+            try:
+                await self._close_client_connection(writer)
+                if writer in self.clients:
+                    del self.clients[writer]
+                logger.info(f"Connection from {addr} closed")
+            except Exception as e:
+                logger.error(f"Error during client cleanup for {addr}: {e}")
+                # Force removal from clients dictionary to prevent leaks
+                if writer in self.clients:
+                    del self.clients[writer]
     
     async def _process_client_messages(self, reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
         """
@@ -201,6 +275,10 @@ class RediminuteServer:
                 if not data:  # Connection closed
                     break
                 
+                # Update last activity timestamp
+                if writer in self.clients:
+                    self.clients[writer].update_activity()
+                
                 # Process the message (echo it back)
                 message = data.decode().strip()
                 logger.debug(f"Received: {message} from {addr}")
@@ -212,7 +290,9 @@ class RediminuteServer:
             except asyncio.TimeoutError:
                 logger.info(f"Client {addr} idle timeout")
                 break
-                
+            except ConnectionError as e:
+                logger.info(f"Connection error for {addr}: {e}")
+                break
             except Exception as e:
                 logger.error(f"Error handling client {addr}: {e}")
                 break
